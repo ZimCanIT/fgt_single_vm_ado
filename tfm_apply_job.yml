@@ -1,0 +1,48 @@
+parameters:
+- name: working_directory
+  type: string
+- name: tfm_plan_file
+  type: string 
+- name: terraform_version
+  type: string 
+
+jobs:
+  - deployment: TerraformApply
+    condition: succeeded()
+    displayName: 'Terraform Apply'
+    environment: 
+      name: 'ZimCanIT-Approvers'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: ${{ parameters.terraform_version }}
+            displayName: 'TFM-Install'
+
+          - task: TerraformTaskV4@4
+            displayName: TFM-Init
+            inputs:
+              allowTelemetryCollection: false
+              command: 'init'
+              provider: 'azurerm'
+              workingDirectory: ${{ parameters.working_directory }}
+              backendServiceArm: '$(backend_service_connection)'
+              backendAzureRmSubscriptionId: '$(backend_subscription)'
+              backendAzureRmResourceGroupName: '$(backend_resource_group_name)'
+              backendAzureRmStorageAccountName: '$(backend_storage_account_name)'
+              backendAzureRmContainerName: '$(backend_container_name)'
+              backendAzureRmKey: '$(backend_key)'
+              environmentServiceNameAzureRM: '$(backend_service_connection)'
+
+          - task: TerraformTaskV4@4
+            displayName: TFM-APPLY
+            inputs:
+              command: 'apply'
+              workingDirectory: $(working_directory)
+              commandOptions: '-parallelism=20 -compact-warnings -auto-approve $(tfm_plan_file)'
+              allowTelemetryCollection: false
+              environmentServiceNameAzureRM: $(deployment_service_connection) 
+            env:
+              TF_LOG: 'WARN' # ideal log level for proactive maintenance (depracation warnings and non-critical problems)
