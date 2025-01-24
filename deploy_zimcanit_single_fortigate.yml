@@ -1,0 +1,41 @@
+parameters:
+- name: environment
+  type: string
+  default: 'dev'
+  values:
+  - dev
+  - prod
+
+variables:
+  - group: zimcanit-global-deployment-spn 
+  - group: backend-config-${{ parameters.environment }} 
+  - name: working_directory
+    value: '$(System.DefaultWorkingDirectory)/fgt_iac'
+  - name: tfm_plan_file
+    value: 'fgt_single_vm.tfplan'
+  - name: terraform_version
+    value: '1.10.2'
+  - name: go_version
+    value: '1.16'
+
+pool:
+  name: zimcanitadoagent
+
+stages:
+- stage: BuildSingleFGT
+  displayName: 'TFM FGT PLAN'
+  jobs:
+  - template: terraform_plan_job.yml
+    parameters:
+      working_directory: $(working_directory)
+      tfm_plan_file: $(tfm_plan_file)
+      terraform_version: $(terraform_version)
+
+- stage: DeploySingleFGT
+  displayName: 'TFM FGT DEPLOY'
+  jobs:
+  - template: terraform_apply_job.yml
+    parameters:
+      working_directory: $(working_directory)
+      tfm_plan_file: $(tfm_plan_file)
+      terraform_version: $(terraform_version)
